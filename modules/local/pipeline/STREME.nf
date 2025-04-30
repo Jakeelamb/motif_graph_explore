@@ -19,6 +19,7 @@ process STREME {
     conda activate motif
     
     echo "[STREME] Starting STREME analysis for: ${windows} at \\\$(date)"
+    echo "[STREME] DEBUGGING MODE: Using RNA alphabet for faster computation"
     mkdir -p ${windows}_streme
     
     # Check if input file exists and has data
@@ -31,18 +32,25 @@ process STREME {
         echo "[STREME] File size: \$(ls -lh ${windows}/filtered_windows.fa | awk '{print \$5}')"
     fi
     
-    # Run STREME on the full set of windows without subsampling
-    echo "[STREME] Running STREME analysis on full dataset"
+    # Run STREME with optimized parameters for better performance
+    # Using RNA mode and fixed seed for reproducibility during debugging
+    echo "[STREME] Running STREME analysis with optimized parameters"
     streme --p ${windows}/filtered_windows.fa \
-        --dna \
+        --rna \
         --oc ${windows}_streme/streme_out \
-        --minw 5 \
-        --maxw 15 \
+        --minw 6 \
+        --maxw 12 \
         --order 2 \
         --thresh 0.01 \
-        --nmotifs 100 \
-        --no-pgc \
-        --totallength 1000000000
+        --neval 15 \
+        --nref 2 \
+        --niter 10 \
+        --nmotifs 75 \
+        --hofract 0.05 \
+        --totallength 10000000 \
+        --time 86400 \
+        --seed 42 \
+        --no-pgc
     if [ \$? -eq 0 ]; then
         echo "[STREME] STREME analysis completed successfully"
     else
