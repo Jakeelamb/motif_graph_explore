@@ -16,89 +16,59 @@ process make_extract_windows {
     # Activate the motif environment
     conda activate motif
     
+    echo "[MAKE_EXTRACT_WINDOWS] Starting window creation for: ${masked_genome} at \$(date)"
     mkdir -p ${masked_genome}_windows
     
     # Get the masked genome and index files using absolute paths
-    MASKED_FASTA="/home/jake/Projects/motif_graph_explore/results/genomes/${masked_genome}/genome.masked.fasta"
-    INDEX_FILE="/home/jake/Projects/motif_graph_explore/results/genomes/${masked_genome}/genome.masked.fasta.fai"
+    MASKED_FASTA="/home/jake/Projects/motif_graph_explore/results/genomes/${masked_genome}/combined_genome.fasta"
+    INDEX_FILE="/home/jake/Projects/motif_graph_explore/results/genomes/${masked_genome}/combined_genome.fasta.fai"
     
     # Check if files exist
     if [ ! -f "\${MASKED_FASTA}" ]; then
-        echo "Error: Masked FASTA file not found at \${MASKED_FASTA}" >&2
+        echo "[MAKE_EXTRACT_WINDOWS] ERROR: Masked FASTA file not found at \${MASKED_FASTA}"
         exit 1
+    else
+        echo "[MAKE_EXTRACT_WINDOWS] Masked FASTA file found at \${MASKED_FASTA}"
     fi
     if [ ! -f "\${INDEX_FILE}" ]; then
-        echo "Error: Index file not found at \${INDEX_FILE}" >&2
+        echo "[MAKE_EXTRACT_WINDOWS] ERROR: Index file not found at \${INDEX_FILE}"
         exit 1
+    else
+        echo "[MAKE_EXTRACT_WINDOWS] Index file found at \${INDEX_FILE}"
     fi
     
     # Generate 10kb windows using bedtools
+    echo "[MAKE_EXTRACT_WINDOWS] Generating 10kb windows using bedtools makewindows"
     bedtools makewindows -g \${INDEX_FILE} -w 10000 > ${masked_genome}_windows.bed
+    if [ \$? -eq 0 ]; then
+        echo "[MAKE_EXTRACT_WINDOWS] Window generation successful, created ${masked_genome}_windows.bed"
+        echo "[MAKE_EXTRACT_WINDOWS] Number of windows generated: \$(wc -l < ${masked_genome}_windows.bed)"
+    else
+        echo "[MAKE_EXTRACT_WINDOWS] ERROR: Window generation failed"
+    fi
     
     # Extract sequences for each window
+    echo "[MAKE_EXTRACT_WINDOWS] Extracting sequences for windows using bedtools getfasta"
     bedtools getfasta -fi \${MASKED_FASTA} -bed ${masked_genome}_windows.bed > ${masked_genome}_windows.fa
+    if [ \$? -eq 0 ]; then
+        echo "[MAKE_EXTRACT_WINDOWS] Sequence extraction successful, created ${masked_genome}_windows.fa"
+        echo "[MAKE_EXTRACT_WINDOWS] Number of sequences extracted: \$(grep -c '>' ${masked_genome}_windows.fa)"
+    else
+        echo "[MAKE_EXTRACT_WINDOWS] ERROR: Sequence extraction failed"
+    fi
     
-    # Create a Python script to filter windows with >50% softmasked bases
-    cat > filter_softmasked.py << 'EOF'
-#!/usr/bin/env python3
-import sys
-import os
-
-def count_lowercase(seq):
-    return sum(1 for c in seq if c.islower())
-
-def main():
-    input_file = sys.argv[1]
-    output_file = sys.argv[2]
-    threshold = 0.5  # 50% threshold
-    
-    with open(input_file, 'r') as fin, open(output_file, 'w') as fout:
-        header = None
-        seq = ""
-        
-        for line in fin:
-            line = line.strip()
-            if not line:
-                continue
-                
-            if line.startswith('>'):
-                # Process previous sequence if it exists
-                if header and seq:
-                    lowercase_ratio = count_lowercase(seq) / len(seq) if len(seq) > 0 else 1.0
-                    if lowercase_ratio <= threshold:
-                        fout.write(header + '\\n')
-                        fout.write(seq + '\\n')
-                
-                # Start new sequence
-                header = line
-                seq = ""
-            else:
-                seq += line
-        
-        # Process the last sequence
-        if header and seq:
-            lowercase_ratio = count_lowercase(seq) / len(seq) if len(seq) > 0 else 1.0
-            if lowercase_ratio <= threshold:
-                fout.write(header + '\\n')
-                fout.write(seq + '\\n')
-
-if __name__ == "__main__":
-    main()
-EOF
-    
-    # Make the script executable
-    chmod +x filter_softmasked.py
-    
-    # Run the filtering script
-    ./filter_softmasked.py ${masked_genome}_windows.fa ${masked_genome}_windows/filtered_windows.fa
+    # Move the unfiltered windows to the output directory
+    echo "[MAKE_EXTRACT_WINDOWS] Copying unfiltered windows to output directory"
+    mkdir -p ${masked_genome}_windows
+    cp ${masked_genome}_windows.fa ${masked_genome}_windows/filtered_windows.fa
+    cp ${masked_genome}_windows.bed ${masked_genome}_windows/
     
     # Generate statistics
+    echo "[MAKE_EXTRACT_WINDOWS] Generating window statistics"
     echo "Window statistics for ${masked_genome}" > ${masked_genome}_windows/window_stats.txt
     echo "Total windows: \$(grep -c '>' ${masked_genome}_windows.fa)" >> ${masked_genome}_windows/window_stats.txt
     echo "Windows after filtering (<=50% softmasked): \$(grep -c '>' ${masked_genome}_windows/filtered_windows.fa)" >> ${masked_genome}_windows/window_stats.txt
     echo "Processing date: \$(date)" >> ${masked_genome}_windows/window_stats.txt
-    
-    # Copy the BED file to the output directory
-    cp ${masked_genome}_windows.bed ${masked_genome}_windows/
+    echo "[MAKE_EXTRACT_WINDOWS] Window processing completed on \$(date)"
     """
 }

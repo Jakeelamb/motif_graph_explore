@@ -9,6 +9,7 @@ MOTIF DISCOVERY PIPELINE
 // Input parameters
 params.input = 'accensions.txt'
 params.outdir = './results'
+params.skip_softmasking = false
 
 // Print the pipeline header
 log.info """\
@@ -16,6 +17,7 @@ log.info """\
          ===================================
          Input file         : ${params.input}
          Output directory   : ${params.outdir}
+         Skip softmasking   : ${params.skip_softmasking}
          """
          .stripIndent()
 
@@ -38,11 +40,18 @@ workflow {
     // Step 2: Index genome
     index_genome(fetch_genome.out)
     
-    // Step 3: Softmask genome
-    softmask_genome(index_genome.out)
+    // Conditionally run softmasking
+    if (!params.skip_softmasking) {
+        // Step 3: Softmask genome
+        softmask_genome(index_genome.out)
+        softmasked_ch = softmask_genome.out
+    } else {
+        // Skip softmasking and use indexed genome directly
+        softmasked_ch = index_genome.out
+    }
     
     // Step 4: Make and extract windows
-    make_extract_windows(softmask_genome.out)
+    make_extract_windows(softmasked_ch)
     
     // Step 5: Run STREME analysis
     STREME(make_extract_windows.out)

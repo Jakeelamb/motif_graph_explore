@@ -16,27 +16,39 @@ process softmask_genome {
     # Activate the motif environment
     conda activate motif
     
+    echo "[SOFTMASK_GENOME] Starting genome softmasking for: ${indexed_genome} at \\\$(date)"
     mkdir -p ${indexed_genome}_masked
     
     # Copy the combined genome FASTA file
+    echo "[SOFTMASK_GENOME] Copying combined genome FASTA file from ${indexed_genome}/combined_genome.fasta"
     cp ${indexed_genome}/combined_genome.fasta ./genome_to_mask.fasta
+    if [ \$? -eq 0 ]; then
+        echo "[SOFTMASK_GENOME] FASTA file copied successfully"
+    else
+        echo "[SOFTMASK_GENOME] ERROR: Failed to copy FASTA file"
+    fi
     
-    # Run RepeatMasker with -xsmall flag to softmask repeats - commented out to prevent local crash
-    # RepeatMasker -xsmall -pa 8 -qq -species metazoa -dir . ./genome_to_mask.fasta
-    # Temporary workaround for local development - just copy the unmasked file as masked
+    # Skip RepeatMasker for local development to prevent crash
+    echo "[SOFTMASK_GENOME] Skipping RepeatMasker softmasking for local run"
     cp ./genome_to_mask.fasta genome_to_mask.fasta.masked
     
     # Move the masked genome and related files to the output directory
+    echo "[SOFTMASK_GENOME] Moving masked genome to ${indexed_genome}_masked/genome.masked.fasta"
     mv genome_to_mask.fasta.masked ${indexed_genome}_masked/genome.masked.fasta
+    echo "[SOFTMASK_GENOME] Copying index file to ${indexed_genome}_masked/genome.masked.fasta.fai"
     cp ${indexed_genome}/combined_genome.fasta.fai ${indexed_genome}_masked/genome.masked.fasta.fai
     
     # If there's a RepeatMasker summary file, copy it for logging
     if [ -f genome_to_mask.fasta.tbl ]; then
+        echo "[SOFTMASK_GENOME] Copying RepeatMasker summary file to ${indexed_genome}_masked/"
         cp genome_to_mask.fasta.tbl ${indexed_genome}_masked/
+    else
+        echo "[SOFTMASK_GENOME] No RepeatMasker summary file found"
     fi
     
     # Create a completion flag file
-    echo "RepeatMasker completed on \$(date)" > ${indexed_genome}_masked/masking_complete.txt
+    echo "[SOFTMASK_GENOME] RepeatMasker skipped on \\\$(date)"
+    echo "RepeatMasker skipped on \\\$(date)" > ${indexed_genome}_masked/masking_complete.txt
     """
 }
 

@@ -97,8 +97,55 @@ process run_streme {
 
   script:
   """
+  # Initialize Conda
+  source /home/jake/miniconda3/etc/profile.d/conda.sh
+  
+  # Activate the motif environment
   conda activate motif
-  streme --p ${windows_fa} --dna --oc streme_out --minw 5 --maxw 15 --order 2 --thresh 0.01 --nmotifs 100 --no-pgc --totallength 1000000000
+  
+  echo "[STREME] Starting STREME analysis for: ${windows} at \\\$(date)"
+  mkdir -p ${windows}_streme
+  
+  # Check if input file exists and has data
+  if [ ! -f "${windows}/filtered_windows.fa" ]; then
+      echo "[STREME] ERROR: Input FASTA file not found at ${windows}/filtered_windows.fa"
+      exit 1
+  else
+      echo "[STREME] Input FASTA file found at ${windows}/filtered_windows.fa"
+      echo "[STREME] Number of sequences in input: \$(grep -c '>' ${windows}/filtered_windows.fa)"
+      echo "[STREME] File size: \$(ls -lh ${windows}/filtered_windows.fa | awk '{print \$5}')"
+  fi
+  
+  # Run STREME on the full set of windows without subsampling
+  echo "[STREME] Running STREME analysis on full dataset"
+  streme --p ${windows}/filtered_windows.fa \
+      --dna \
+      --oc ${windows}_streme/streme_out \
+      --minw 5 \
+      --maxw 15 \
+      --order 2 \
+      --thresh 0.01 \
+      --nmotifs 100 \
+      --no-pgc \
+      --totallength 1000000000
+  if [ \$? -eq 0 ]; then
+      echo "[STREME] STREME analysis completed successfully"
+  else
+      echo "[STREME] ERROR: STREME analysis failed"
+  fi
+  
+  # Check if STREME output file exists
+  if [ -f "${windows}_streme/streme_out/streme.txt" ]; then
+      echo "[STREME] STREME output file found at ${windows}_streme/streme_out/streme.txt"
+      echo "[STREME] Number of motifs in output: \$(grep -c '^MOTIF' ${windows}_streme/streme_out/streme.txt)"
+  else
+      echo "[STREME] ERROR: STREME output file not found at ${windows}_streme/streme_out/streme.txt"
+  fi
+      
+  # Parse STREME results to TSV format
+  echo "[STREME] Parsing STREME results to TSV format"
+  python3 -c "import os; import sys; import re; import pandas as pd; streme_txt_path = '${windows}_streme/streme_out/streme.txt'; output_tsv = '${windows}_streme/parsed_streme.tsv'; motifs = []; with open(streme_txt_path, 'r') if os.path.exists(streme_txt_path) else open('/dev/null', 'r') as f: lines = f.readlines(); in_motif_section = False; current_motif = {}; for line in lines: line = line.strip(); if line.startswith('MOTIF'): in_motif_section = True; motif_match = re.match(r'MOTIF\\s+(\\d+)', line); if motif_match: current_motif = {'motif_id': f'STREME-{motif_match.group(1)}'}; elif in_motif_section and line.startswith('p-value'): pvalue_match = re.match(r'p-value\\s+=\\s+(\\S+)', line); if pvalue_match: current_motif['p_value'] = pvalue_match.group(1); elif in_motif_section and line.startswith('E-value'): evalue_match = re.match(r'E-value\\s+=\\s+(\\S+)', line); if evalue_match: current_motif['e_value'] = evalue_match.group(1); elif in_motif_section and line.startswith('Consensus'): consensus_match = re.match(r'Consensus\\s+=\\s+(\\S+)', line); if consensus_match: current_motif['consensus'] = consensus_match.group(1); elif in_motif_section and line.startswith('Width'): width_match = re.match(r'Width\\s+=\\s+(\\d+)', line); if width_match: current_motif['width'] = width_match.group(1); elif in_motif_section and line.startswith('Sites'): sites_match = re.match(r'Sites\\s+=\\s+(\\d+)', line); if sites_match: current_motif['sites'] = sites_match.group(1); motifs.append(current_motif); in_motif_section = False; current_motif = {}; if motifs: df = pd.DataFrame(motifs); df['source'] = 'STREME'; df.to_csv(output_tsv, sep='\\t', index=False); print(f'[STREME] Parsed {len(motifs)} motifs from STREME output'); else: print('[STREME] No motifs found in STREME output'); columns = ['motif_id', 'consensus', 'width', 'sites', 'p_value', 'e_value', 'source']; pd.DataFrame(columns=columns).to_csv(output_tsv, sep='\\t', index=False);"
+  echo "[STREME] STREME process completed on \\\$(date)"
   """
 }
 
@@ -178,55 +225,22 @@ process STREME {
     # Activate the motif environment
     conda activate motif
     
+    echo "[STREME] Starting STREME analysis for: ${windows} at \\\$(date)"
     mkdir -p ${windows}_streme
     
-    # Subsample the input FASTA file to reduce size
-    cat > subsample_fasta.py << 'EOF'
-    #!/usr/bin/env python3
-    import sys
-    import random
+    # Check if input file exists and has data
+    if [ ! -f "${windows}/filtered_windows.fa" ]; then
+        echo "[STREME] ERROR: Input FASTA file not found at ${windows}/filtered_windows.fa"
+        exit 1
+    else
+        echo "[STREME] Input FASTA file found at ${windows}/filtered_windows.fa"
+        echo "[STREME] Number of sequences in input: \$(grep -c '>' ${windows}/filtered_windows.fa)"
+        echo "[STREME] File size: \$(ls -lh ${windows}/filtered_windows.fa | awk '{print \$5}')"
+    fi
     
-    def subsample_fasta(input_file, output_file, sample_size=5000):
-        sequences = []
-        current_seq = []
-        current_header = None
-        
-        with open(input_file, 'r') as f:
-            for line in f:
-                line = line.strip()
-                if line.startswith('>'):
-                    if current_seq and current_header:
-                        sequences.append((current_header, ''.join(current_seq)))
-                    current_header = line
-                    current_seq = []
-                else:
-                    current_seq.append(line)
-            if current_seq and current_header:
-                sequences.append((current_header, ''.join(current_seq)))
-        
-        if len(sequences) > sample_size:
-            sampled_sequences = random.sample(sequences, sample_size)
-        else:
-            sampled_sequences = sequences
-        
-        with open(output_file, 'w') as f:
-            for header, seq in sampled_sequences:
-                f.write(header + '\n')
-                f.write(seq + '\n')
-        print(f"Subsampled {len(sequences)} sequences to {len(sampled_sequences)}")
-    
-    if __name__ == "__main__":
-        subsample_fasta(sys.argv[1], sys.argv[2])
-    EOF
-    
-    # Make the script executable
-    chmod +x subsample_fasta.py
-    
-    # Run the subsampling script
-    ./subsample_fasta.py ${windows}/filtered_windows.fa ${windows}/subsampled_windows.fa
-    
-    # Run STREME on the subsampled windows
-    streme --p ${windows}/subsampled_windows.fa \
+    # Run STREME on the full set of windows without subsampling
+    echo "[STREME] Running STREME analysis on full dataset"
+    streme --p ${windows}/filtered_windows.fa \
         --dna \
         --oc ${windows}_streme/streme_out \
         --minw 5 \
@@ -235,9 +249,24 @@ process STREME {
         --thresh 0.01 \
         --nmotifs 100 \
         --no-pgc \
-        --totallength 50000000
+        --totallength 1000000000
+    if [ \$? -eq 0 ]; then
+        echo "[STREME] STREME analysis completed successfully"
+    else
+        echo "[STREME] ERROR: STREME analysis failed"
+    fi
+    
+    # Check if STREME output file exists
+    if [ -f "${windows}_streme/streme_out/streme.txt" ]; then
+        echo "[STREME] STREME output file found at ${windows}_streme/streme_out/streme.txt"
+        echo "[STREME] Number of motifs in output: \$(grep -c '^MOTIF' ${windows}_streme/streme_out/streme.txt)"
+    else
+        echo "[STREME] ERROR: STREME output file not found at ${windows}_streme/streme_out/streme.txt"
+    fi
         
     # Parse STREME results to TSV format
-    python3 -c "import os; import sys; import re; import pandas as pd; streme_txt_path = '${windows}_streme/streme_out/streme.txt'; output_tsv = '${windows}_streme/parsed_streme.tsv'; motifs = []; with open(streme_txt_path, 'r') if os.path.exists(streme_txt_path) else open('/dev/null', 'r') as f: lines = f.readlines(); in_motif_section = False; current_motif = {}; for line in lines: line = line.strip(); if line.startswith('MOTIF'): in_motif_section = True; motif_match = re.match(r'MOTIF\\s+(\\d+)', line); if motif_match: current_motif = {'motif_id': f'STREME-{motif_match.group(1)}'}; elif in_motif_section and line.startswith('p-value'): pvalue_match = re.match(r'p-value\\s+=\\s+(\\S+)', line); if pvalue_match: current_motif['p_value'] = pvalue_match.group(1); elif in_motif_section and line.startswith('E-value'): evalue_match = re.match(r'E-value\\s+=\\s+(\\S+)', line); if evalue_match: current_motif['e_value'] = evalue_match.group(1); elif in_motif_section and line.startswith('Consensus'): consensus_match = re.match(r'Consensus\\s+=\\s+(\\S+)', line); if consensus_match: current_motif['consensus'] = consensus_match.group(1); elif in_motif_section and line.startswith('Width'): width_match = re.match(r'Width\\s+=\\s+(\\d+)', line); if width_match: current_motif['width'] = width_match.group(1); elif in_motif_section and line.startswith('Sites'): sites_match = re.match(r'Sites\\s+=\\s+(\\d+)', line); if sites_match: current_motif['sites'] = sites_match.group(1); motifs.append(current_motif); in_motif_section = False; current_motif = {}; if motifs: df = pd.DataFrame(motifs); df['source'] = 'STREME'; df.to_csv(output_tsv, sep='\\t', index=False); print(f'Parsed {len(motifs)} motifs from STREME output'); else: print('No motifs found in STREME output'); columns = ['motif_id', 'consensus', 'width', 'sites', 'p_value', 'e_value', 'source']; pd.DataFrame(columns=columns).to_csv(output_tsv, sep='\\t', index=False);"
+    echo "[STREME] Parsing STREME results to TSV format"
+    python3 -c "import os; import sys; import re; import pandas as pd; streme_txt_path = '${windows}_streme/streme_out/streme.txt'; output_tsv = '${windows}_streme/parsed_streme.tsv'; motifs = []; with open(streme_txt_path, 'r') if os.path.exists(streme_txt_path) else open('/dev/null', 'r') as f: lines = f.readlines(); in_motif_section = False; current_motif = {}; for line in lines: line = line.strip(); if line.startswith('MOTIF'): in_motif_section = True; motif_match = re.match(r'MOTIF\\s+(\\d+)', line); if motif_match: current_motif = {'motif_id': f'STREME-{motif_match.group(1)}'}; elif in_motif_section and line.startswith('p-value'): pvalue_match = re.match(r'p-value\\s+=\\s+(\\S+)', line); if pvalue_match: current_motif['p_value'] = pvalue_match.group(1); elif in_motif_section and line.startswith('E-value'): evalue_match = re.match(r'E-value\\s+=\\s+(\\S+)', line); if evalue_match: current_motif['e_value'] = evalue_match.group(1); elif in_motif_section and line.startswith('Consensus'): consensus_match = re.match(r'Consensus\\s+=\\s+(\\S+)', line); if consensus_match: current_motif['consensus'] = consensus_match.group(1); elif in_motif_section and line.startswith('Width'): width_match = re.match(r'Width\\s+=\\s+(\\d+)', line); if width_match: current_motif['width'] = width_match.group(1); elif in_motif_section and line.startswith('Sites'): sites_match = re.match(r'Sites\\s+=\\s+(\\d+)', line); if sites_match: current_motif['sites'] = sites_match.group(1); motifs.append(current_motif); in_motif_section = False; current_motif = {}; if motifs: df = pd.DataFrame(motifs); df['source'] = 'STREME'; df.to_csv(output_tsv, sep='\\t', index=False); print(f'[STREME] Parsed {len(motifs)} motifs from STREME output'); else: print('[STREME] No motifs found in STREME output'); columns = ['motif_id', 'consensus', 'width', 'sites', 'p_value', 'e_value', 'source']; pd.DataFrame(columns=columns).to_csv(output_tsv, sep='\\t', index=False);"
+    echo "[STREME] STREME process completed on \\\$(date)"
     """
 }
