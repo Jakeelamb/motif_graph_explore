@@ -12,7 +12,7 @@ process append_to_db {
     script:
     """
     # Initialize Conda
-    source /home/jake/miniconda3/etc/profile.d/conda.sh
+    source /nfs/home/jlamb/bin/miniconda3/etc/profile.d/conda.sh
     
     # Activate the motif environment
     conda activate motif
@@ -22,19 +22,72 @@ process append_to_db {
     echo "[APPEND_TO_DB] TRF results directory: ${trf_results}"
     
     # Check if a database file already exists in the project root directory
-    DB_PATH="/home/jake/Projects/motif_graph_explore/motifs.db"
+    DB_PATH="./motifs.db"
     if [ -f "\$DB_PATH" ]; then
         echo "[APPEND_TO_DB] Using existing database at \$DB_PATH"
         cp "\$DB_PATH" ./motifs.db
     else
         echo "[APPEND_TO_DB] No existing database found. Creating a new one."
-        bash /home/jake/Projects/motif_graph_explore/modules/local/pre/create_db.sh
+        # Create a temporary script to create the database
+        cat > create_db.sh << 'EOF'
+#!/bin/bash
+
+# Create a SQLite database to store the results of the motif discovery pipeline
+
+DB_FILE="motifs.db"
+
+# Check if the database file already exists
+if [ -f "$DB_FILE" ]; then
+    echo "Database file $DB_FILE already exists. Skipping creation."
+    exit 0
+fi
+
+# Create the database and define the schema
+echo "Creating new database file: $DB_FILE"
+sqlite3 "$DB_FILE" <<EOFINNER
+CREATE TABLE IF NOT EXISTS motifs (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    motif_id TEXT,
+    consensus TEXT,
+    width INTEGER,
+    source TEXT,
+    species TEXT,
+    p_value REAL,
+    e_value REAL,
+    sites INTEGER,
+    period INTEGER,
+    copies REAL,
+    score INTEGER,
+    sequence TEXT,
+    start INTEGER,
+    end INTEGER,
+    percent_match REAL
+);
+
+CREATE TABLE IF NOT EXISTS metadata (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    species TEXT,
+    genome_size INTEGER,
+    masked_percent REAL,
+    window_size INTEGER,
+    window_count INTEGER,
+    filtered_window_count INTEGER,
+    streme_motif_count INTEGER,
+    trf_motif_count INTEGER,
+    processing_date TEXT
+);
+EOFINNER
+
+echo "Database $DB_FILE created successfully with tables 'motifs' and 'metadata'."
+EOF
+        chmod +x create_db.sh
+        ./create_db.sh
     fi
     
     # Check if database file exists now
     if [ -f "./motifs.db" ]; then
         echo "[APPEND_TO_DB] Database file found at ./motifs.db"
-    else:
+    else
         echo "[APPEND_TO_DB] ERROR: Database file not found at ./motifs.db"
         exit 1
     fi
@@ -222,10 +275,6 @@ if __name__ == "__main__":
     db_path = sys.argv[3]
     
     update_motif_db(streme_dir, trf_dir, db_path)
-    
-    # Copy the updated database back to the project root
-    cp ./motifs.db "\$DB_PATH"
-    echo "[APPEND_TO_DB] Updated database copied to \$DB_PATH"
 EOF
     
     # Make the script executable
@@ -234,7 +283,7 @@ EOF
     
     # Run the database update script
     echo "[APPEND_TO_DB] Running database update script"
-    ./update_motif_db.py ${streme_results} ${trf_results} motifs.db
+    python update_motif_db.py ${streme_results} ${trf_results} motifs.db
     if [ \$? -eq 0 ]; then
         echo "[APPEND_TO_DB] Database update script completed successfully"
     else

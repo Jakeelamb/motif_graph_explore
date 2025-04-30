@@ -13,7 +13,7 @@ process TRF {
     script:
     """
     # Initialize Conda
-    source /home/jake/miniconda3/etc/profile.d/conda.sh
+    source /nfs/home/jlamb/bin/miniconda3/etc/profile.d/conda.sh
     
     # Activate the motif environment
     conda activate motif
@@ -22,7 +22,7 @@ process TRF {
     mkdir -p ${indexed_genome}_trf
     
     # Check if input file exists
-    FASTA_FILE="/home/jake/Projects/motif_graph_explore/results/genomes/${indexed_genome}/combined_genome.fasta"
+    FASTA_FILE="${params.outdir}/genomes/${indexed_genome}/combined_genome.fasta"
     if [ ! -f "\${FASTA_FILE}" ]; then
         echo "[TRF] ERROR: FASTA file not found at \${FASTA_FILE}"
         # Create mock output for pipeline to continue

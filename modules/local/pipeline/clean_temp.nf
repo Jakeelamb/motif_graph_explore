@@ -7,7 +7,7 @@ process clean_temp {
     script:
     """
     # Initialize Conda
-    source /home/jake/miniconda3/etc/profile.d/conda.sh
+    source /nfs/home/jlamb/bin/miniconda3/etc/profile.d/conda.sh
     
     # Activate the motif environment
     conda activate motif
