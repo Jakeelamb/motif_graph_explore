@@ -10,6 +10,7 @@ dependencies:
   - _openmp_mutex=5.1=1_gnu
   - alsa-lib=1.2.12=h4ab18f5_0
   - bedtools=2.31.1=h13024bc_3
+  - biopython=1.83=py313h3c4608c_0
   - blas=1.0=openblas
   - bwa-mem2=2.2.1=he70b90d_8
   - bzip2=1.0.8=h5eee18b_6
