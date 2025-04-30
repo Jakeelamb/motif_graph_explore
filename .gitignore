@@ -1,0 +1,56 @@
+# Git ignore file for bioinformatics and Nextflow projects
+
+# Nextflow execution directories and files
+work/
+.nextflow/
+.nextflow.log*
+
+# Output directories
+results/
+output/
+
+# Temporary and cache files
+*.tmp
+*.swp
+*.swo
+
+# Large data files
+*.fa
+*.fasta
+*.bed
+*.gff
+*.gtf
+*.vcf
+*.bam
+*.sam
+*.fastq
+*.fq
+*.gz
+*.bz2
+*.tar
+*.zip
+
+# Database and index files
+*.db
+*.index
+*.idx
+
+# Log files
+*.log
+*.out
+*.err
+
+# Environment and dependency directories
+env/
+venv/
+.venv/
+conda_env/
+
+# IDE and editor files
+.idea/
+.vscode/
+*.code-workspace
+
+# System files
+.DS_Store
+Thumbs.db
