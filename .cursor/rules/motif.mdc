@@ -42,7 +42,6 @@ For tool-specific usage and argument guidance, refer to:
 
 ## 3. STREME Usage
 - Run `streme` on the 10 kb windows.
-- Limit total sequence input using `--totallength` (e.g., 1e9 bp max).
 - Save outputs to unique `streme_out` directories.
 - Always include `--dna --oc results/streme/species_name` in the CLI.
 
@@ -57,11 +56,6 @@ For tool-specific usage and argument guidance, refer to:
 ## 6. Logging & Reproducibility
 - Store metadata (e.g. species, accession, genome size, masking status, window size, motif count) in a centralized TSV or SQLite file.
 - Track softmasking status for each genome.
-
-## 7. Quality Control
-- Discard windows with >50% softmasked bases.
-- Confirm genome index consistency.
-- Log RepeatMasker summary (`*.tbl`) with date and runtime.
 
 ## 8. Assembly Index
 - Use both STREME and TRF motifs to construct graph.

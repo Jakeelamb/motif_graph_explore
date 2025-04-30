@@ -20,8 +20,8 @@ process make_extract_windows {
     mkdir -p ${masked_genome}_windows
     
     # Get the masked genome and index files using absolute paths
-    MASKED_FASTA="\$PWD/results/genomes/${masked_genome}/combined_genome.fasta"
-    INDEX_FILE="\$PWD/results/genomes/${masked_genome}/combined_genome.fasta.fai"
+    MASKED_FASTA="${masked_genome}/combined_genome.fasta"
+    INDEX_FILE="${masked_genome}/combined_genome.fasta.fai"
     
     # Check if files exist
     if [ ! -f "\${MASKED_FASTA}" ]; then
