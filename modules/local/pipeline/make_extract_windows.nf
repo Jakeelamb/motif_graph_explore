@@ -19,9 +19,9 @@ process make_extract_windows {
     echo "[MAKE_EXTRACT_WINDOWS] Starting window creation for: ${masked_genome} at \$(date)"
     mkdir -p ${masked_genome}_windows
     
-    # Get the masked genome and index files using relative paths
-    MASKED_FASTA="${params.outdir}/genomes/${masked_genome}/combined_genome.fasta"
-    INDEX_FILE="${params.outdir}/genomes/${masked_genome}/combined_genome.fasta.fai"
+    # Get the masked genome and index files using absolute paths
+    MASKED_FASTA="\$PWD/${params.outdir}/genomes/${masked_genome}/combined_genome.fasta"
+    INDEX_FILE="\$PWD/${params.outdir}/genomes/${masked_genome}/combined_genome.fasta.fai"
     
     # Check if files exist
     if [ ! -f "\${MASKED_FASTA}" ]; then

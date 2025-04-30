@@ -22,7 +22,7 @@ process TRF {
     mkdir -p ${indexed_genome}_trf
     
     # Check if input file exists
-    FASTA_FILE="${params.outdir}/genomes/${indexed_genome}/combined_genome.fasta"
+    FASTA_FILE="\$PWD/${params.outdir}/genomes/${indexed_genome}/combined_genome.fasta"
     if [ ! -f "\${FASTA_FILE}" ]; then
         echo "[TRF] ERROR: FASTA file not found at \${FASTA_FILE}"
         # Create mock output for pipeline to continue
