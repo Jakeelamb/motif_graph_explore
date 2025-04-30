@@ -13,11 +13,7 @@ globs:
 alwaysApply: true
 ---
 
-# ⬢ Environment Activation
-Always ensure the `motif` conda environment is activated before executing any command or launching any script:
-```bash
-conda activate motif
-```
+
 Use `source ~/.bashrc` or `.bash_profile` if the environment isn’t recognized by Nextflow or shell subprocesses.
 
 # 📁 Documentation Access

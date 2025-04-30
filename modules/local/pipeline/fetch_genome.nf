@@ -10,11 +10,7 @@ process fetch_genome {
     
     script:
     """
-    # Initialize Conda
-    source /nfs/home/jlamb/bin/miniconda3/etc/profile.d/conda.sh
-    
-    # Activate the motif environment
-    conda activate motif
+    # No need for manual conda initialization - handled by the config
     
     echo "[FETCH_GENOME] Starting genome download for accession: ${accession} at \$(date)"
     mkdir -p ${accession}_genome

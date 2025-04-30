@@ -18,11 +18,11 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-  <meta name="description" content="Nextflow workflow report for run id [clever_engelbart]">
+  <meta name="description" content="Nextflow workflow report for run id [stoic_marconi]">
   <meta name="author" content="Paolo Di Tommaso, Phil Ewels">
   <link rel="icon" type="image/png" href="https://www.nextflow.io/img/favicon.png" />
 
-  <title>[clever_engelbart] Nextflow Workflow Report</title>
+  <title>[stoic_marconi] Nextflow Workflow Report</title>
 
   <style type="text/css">
   /*!
@@ -137,7 +137,7 @@ table.DTCR_clonedTable.dataTable{position:absolute !important;background-color:r
         <li class="nav-item"><a class="nav-link" href="#tasks">Tasks</a></li>
       </ul>
       <span class="navbar-text">
-        [clever_engelbart]
+        [stoic_marconi]
       </span>
     </div>
   </nav>
@@ -146,73 +146,27 @@ table.DTCR_clonedTable.dataTable{position:absolute !important;background-color:r
     <div class="container">
 
       <h1 class="display-3">Nextflow workflow report</h1>
-      <h2 class="text-muted mb-4"><samp>[clever_engelbart]</samp> </h2>
+      <h2 class="text-muted mb-4"><samp>[stoic_marconi]</samp> <em>(resumed run)</em></h2>
 
       
           <div class="alert alert-danger mb-4">
               <h4>Workflow execution completed unsuccessfully!</h4>
-              <p>The exit status of the task that caused the workflow execution to fail was: <code>1</code>.</p>
+              <p>The exit status of the task that caused the workflow execution to fail was: <code>null</code>.</p>
               <p>The full error message was:</p>
-              <pre>Error executing process > 'fetch_genome (GCA_000002985.3)'
+              <pre>Error executing process > 'fetch_genome (1)'
 
 Caused by:
-  Process `fetch_genome (GCA_000002985.3)` terminated with an error exit status (1)
+  Conda prefix path does not exist or is not a directory: /nfs/home/jlamb/bin/miniconda3/envs/motif
 
-
-Command executed:
-
-  # Initialize Conda
-  source /home/jake/miniconda3/etc/profile.d/conda.sh
-  
-  # Activate the motif environment
-  conda activate motif
-  
-  echo "[FETCH_GENOME] Starting genome download for accession: GCA_000002985.3 at $(date)"
-  mkdir -p GCA_000002985.3_genome
-  
-  # Download genome using NCBI datasets
-  echo "[FETCH_GENOME] Running datasets download command for GCA_000002985.3"
-  datasets download genome accession GCA_000002985.3 --filename GCA_000002985.3.zip
-  if [ $? -eq 0 ]; then
-      echo "[FETCH_GENOME] Download successful for GCA_000002985.3"
-  else
-      echo "[FETCH_GENOME] ERROR: Download failed for GCA_000002985.3"
-  fi
-  
-  # Unzip the downloaded genome
-  echo "[FETCH_GENOME] Unzipping genome data for GCA_000002985.3"
-  unzip GCA_000002985.3.zip -d GCA_000002985.3_genome/
-  if [ $? -eq 0 ]; then
-      echo "[FETCH_GENOME] Unzip successful for GCA_000002985.3"
-  else
-      echo "[FETCH_GENOME] ERROR: Unzip failed for GCA_000002985.3"
-  fi
-  
-  # Create a completion flag file
-  echo "[FETCH_GENOME] Genome download completed on $(date)"
-  echo "Genome download completed on $(date)" > GCA_000002985.3_genome/download_complete.txt
-
-Command exit status:
-  1
-
-Command output:
-  (empty)
-
-Command error:
-  .command.sh: line 3: /home/jake/miniconda3/etc/profile.d/conda.sh: No such file or directory
-
-Work dir:
-  /nfs/home/jlamb/Projects/motif_graph_explore/work/f3/02bf61f9f580d8858fa13a6872ba80
-
-Tip: when you have fixed the problem you can continue the execution adding the option `-resume` to the run command line</pre>
+</pre>
           </div>
       
 
       <dl>
         <dt>Run times</dt>
         <dd>
-          <span id="workflow_start">30-Apr-2025 12:20:16</span> - <span id="workflow_complete">30-Apr-2025 12:20:18</span>
-          (<span id="completed_fromnow"></span>duration: <strong>2.7s</strong>)
+          <span id="workflow_start">30-Apr-2025 13:15:02</span> - <span id="workflow_complete">30-Apr-2025 13:15:05</span>
+          (<span id="completed_fromnow"></span>duration: <strong>2.2s</strong>)
         </dd>
 
         <dl>
@@ -220,12 +174,12 @@ Tip: when you have fixed the problem you can continue the execution adding the o
             <div style="width: 0.0%" class="progress-bar bg-success" data-toggle="tooltip" data-placement="top" title="0 tasks succeeded"><span class="text-truncate">&nbsp; 0 succeeded &nbsp;</span></div>
             <div style="width: 0.0%" class="progress-bar bg-secondary" data-toggle="tooltip" data-placement="top" title="0 tasks were cached"><span class="text-truncate">&nbsp; 0 cached &nbsp;</span></div>
             <div style="width: 0.0%" class="progress-bar bg-warning" data-toggle="tooltip" data-placement="top" title="0 tasks reported and error and were ignored"><span class="text-truncate">&nbsp; 0 ignored &nbsp;</span></div>
-            <div style="width: 100.0%" class="progress-bar bg-danger" data-toggle="tooltip" data-placement="top" title="1 tasks failed"><span class="text-truncate">&nbsp; 1 failed &nbsp;</span></div>
+            <div style="width: 0.0%" class="progress-bar bg-danger" data-toggle="tooltip" data-placement="top" title="0 tasks failed"><span class="text-truncate">&nbsp; 0 failed &nbsp;</span></div>
           </div>
         </dl>
 
         <dt>Nextflow command</dt>
-        <dd><pre class="nfcommand"><code>nextflow run main.nf --profile slurm</code></pre></dd>
+        <dd><pre class="nfcommand"><code>nextflow run main.nf --profile slurm -resume</code></pre></dd>
       </dl>
 
       <dl class="row small">
@@ -233,13 +187,13 @@ Tip: when you have fixed the problem you can continue the execution adding the o
         <dd class="col-sm-9"><samp>(a few seconds)</samp></dd>
 
         <dt class="col-sm-3">Launch directory</dt>
-        <dd class="col-sm-9"><samp>/nfs/home/jlamb/Projects/motif_graph_explore</samp></dd>
+        <dd class="col-sm-9"><samp>/home/jake/Projects/motif_graph_explore</samp></dd>
 
         <dt class="col-sm-3">Work directory</dt>
-        <dd class="col-sm-9"><samp>/nfs/home/jlamb/Projects/motif_graph_explore/work</samp></dd>
+        <dd class="col-sm-9"><samp>/home/jake/Projects/motif_graph_explore/work</samp></dd>
 
         <dt class="col-sm-3">Project directory</dt>
-        <dd class="col-sm-9"><samp>/nfs/home/jlamb/Projects/motif_graph_explore</samp></dd>
+        <dd class="col-sm-9"><samp>/home/jake/Projects/motif_graph_explore</samp></dd>
 
         
           <dt class="col-sm-3">Script name</dt>
@@ -252,7 +206,7 @@ Tip: when you have fixed the problem you can continue the execution adding the o
         
 
         <dt class="col-sm-3">Workflow session</dt>
-        <dd class="col-sm-9"><code>2503fa43-9167-4ecf-99af-86e6f104882d</code></dd>
+        <dd class="col-sm-9"><code>c2aa533d-76b1-4665-806c-eb25e11d98b9</code></dd>
 
         
 
@@ -1086,7 +1040,7 @@ $(function() {
 
   // Nextflow report data
   window.data = { "trace":[
-{"task_id":"1","hash":"f3\/02bf61","native_id":"399097","process":"fetch_genome","module":"-","container":"-","tag":"GCA_000002985.3","name":"fetch_genome (GCA_000002985.3)","status":"FAILED","exit":"1","submit":"1746037217376","start":"1746037217464","complete":"1746037218784","duration":"1408","realtime":"1320","%cpu":"-","%mem":"-","rss":"-","vmem":"-","peak_rss":"-","peak_vmem":"-","rchar":"-","wchar":"-","syscr":"-","syscw":"-","read_bytes":"-","write_bytes":"-","attempt":"1","workdir":"\/nfs\/home\/jlamb\/Projects\/motif_graph_explore\/work\/f3\/02bf61f9f580d8858fa13a6872ba80","script":"\n    # Initialize Conda\n    source \/home\/jake\/miniconda3\/etc\/profile.d\/conda.sh\n    \n    # Activate the motif environment\n    conda activate motif\n    \n    echo \"[FETCH_GENOME] Starting genome download for accession: GCA_000002985.3 at $(date)\"\n    mkdir -p GCA_000002985.3_genome\n    \n    # Download genome using NCBI datasets\n    echo \"[FETCH_GENOME] Running datasets download command for GCA_000002985.3\"\n    datasets download genome accession GCA_000002985.3 --filename GCA_000002985.3.zip\n    if [ $? -eq 0 ]; then\n        echo \"[FETCH_GENOME] Download successful for GCA_000002985.3\"\n    else\n        echo \"[FETCH_GENOME] ERROR: Download failed for GCA_000002985.3\"\n    fi\n    \n    # Unzip the downloaded genome\n    echo \"[FETCH_GENOME] Unzipping genome data for GCA_000002985.3\"\n    unzip GCA_000002985.3.zip -d GCA_000002985.3_genome\/\n    if [ $? -eq 0 ]; then\n        echo \"[FETCH_GENOME] Unzip successful for GCA_000002985.3\"\n    else\n        echo \"[FETCH_GENOME] ERROR: Unzip failed for GCA_000002985.3\"\n    fi\n    \n    # Create a completion flag file\n    echo \"[FETCH_GENOME] Genome download completed on $(date)\"\n    echo \"Genome download completed on $(date)\" > GCA_000002985.3_genome\/download_complete.txt\n    ","scratch":"-","queue":"-","cpus":"16","memory":"16106127360","disk":"-","time":"-","env":"-","error_action":"TERMINATE","vol_ctxt":"-","inv_ctxt":"-","hostname":"-","cpu_model":"-"}], "summary":[{"cpuUsage":null,"process":"fetch_genome","mem":null,"memUsage":null,"timeUsage":null,"vmem":null,"reads":null,"cpu":null,"time":{"mean":1320,"min":1320,"q1":1320,"q2":1320,"q3":1320,"max":1320,"minLabel":"fetch_genome (GCA_000002985.3)","maxLabel":"fetch_genome (GCA_000002985.3)","q1Label":"fetch_genome (GCA_000002985.3)","q2Label":"fetch_genome (GCA_000002985.3)","q3Label":"fetch_genome (GCA_000002985.3)"},"writes":null}] };
+], "summary":[] };
 
   </script>
 

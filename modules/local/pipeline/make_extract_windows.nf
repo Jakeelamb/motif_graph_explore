@@ -10,11 +10,7 @@ process make_extract_windows {
     
     script:
     """
-    # Initialize Conda
-    source /nfs/home/jlamb/bin/miniconda3/etc/profile.d/conda.sh
-    
-    # Activate the motif environment
-    conda activate motif
+    # No need for manual conda initialization - handled by the config
     
     echo "[MAKE_EXTRACT_WINDOWS] Starting window creation for: ${masked_genome} at \$(date)"
     mkdir -p ${masked_genome}_windows
