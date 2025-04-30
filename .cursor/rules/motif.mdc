@@ -13,8 +13,12 @@ globs:
 alwaysApply: true
 ---
 
+# ⚠️ IMPORTANT PATH INFORMATION ⚠️
+- This pipeline runs on an HPC cluster (not local)
+- The conda path on the HPC system is: `/nfs/home/jlamb/bin/miniconda3/`
+- DO NOT modify paths to match local system paths
 
-Use `source ~/.bashrc` or `.bash_profile` if the environment isn’t recognized by Nextflow or shell subprocesses.
+Use `source ~/.bashrc` or `.bash_profile` if the environment isn't recognized by Nextflow or shell subprocesses.
 
 # 📁 Documentation Access
 For tool-specific usage and argument guidance, refer to:
