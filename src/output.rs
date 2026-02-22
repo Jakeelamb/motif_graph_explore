@@ -28,6 +28,14 @@ pub struct Metadata {
     pub node_count: usize,
     pub edge_count: usize,
     pub elapsed_secs: f64,
+    #[serde(default)]
+    pub canonical: bool,
+    #[serde(default = "default_z_score")]
+    pub z_score: f64,
+}
+
+fn default_z_score() -> f64 {
+    3.0
 }
 
 // --- DOT export (for graphviz: `dot -Tsvg file.dot -o file.svg`) ---

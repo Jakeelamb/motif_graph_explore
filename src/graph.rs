@@ -126,7 +126,7 @@ mod tests {
         }
         vocab.insert(KmerU64::from_slice(b"AC").unwrap(), 50);
 
-        let result = compute_assembly_index(&vocab, 2);
+        let result = compute_assembly_index(&vocab, 2, false);
         let dag = build_dag(&result);
 
         assert_eq!(dag.node_count(), 5);
@@ -143,7 +143,7 @@ mod tests {
         vocab.insert(KmerU64::from_slice(b"CG").unwrap(), 50);
         vocab.insert(KmerU64::from_slice(b"ACG").unwrap(), 25);
 
-        let result = compute_assembly_index(&vocab, 3);
+        let result = compute_assembly_index(&vocab, 3, false);
         let dag = build_dag(&result);
 
         assert!(petgraph::algo::toposort(&dag, None).is_ok());
@@ -157,7 +157,7 @@ mod tests {
         }
         vocab.insert(KmerU64::from_slice(b"AC").unwrap(), 50);
 
-        let result = compute_assembly_index(&vocab, 2);
+        let result = compute_assembly_index(&vocab, 2, false);
         let dag = build_dag(&result);
         let stats = dag_stats(&dag);
 

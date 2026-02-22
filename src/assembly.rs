@@ -47,7 +47,7 @@ impl AssemblyResult {
 }
 
 /// Compute assembly index for all k-mers in the vocabulary.
-pub fn compute_assembly_index(vocabulary: &Vocabulary, max_k: usize) -> AssemblyResult {
+pub fn compute_assembly_index(vocabulary: &Vocabulary, max_k: usize, canonical: bool) -> AssemblyResult {
     // Pathway storage for the DP. Only lives during computation.
     // Key: (encoded, len), Value: (ai, split_pos, pathway_kmers)
     let mut computed: FxHashMap<(u64, u8), (u32, Option<usize>, Vec<KmerU64>)> =
@@ -56,7 +56,12 @@ pub fn compute_assembly_index(vocabulary: &Vocabulary, max_k: usize) -> Assembly
     let mut result_nodes = Vec::new();
 
     // Level 0: base alphabet — AI = 0
-    for &base in &[b'A', b'C', b'G', b'T'] {
+    let base_alphabet: &[u8] = if canonical {
+        &[b'A', b'C']
+    } else {
+        &[b'A', b'C', b'G', b'T']
+    };
+    for &base in base_alphabet {
         let kmer = KmerU64::from_slice(&[base]).unwrap();
         if vocabulary.contains(&kmer) {
             let count = vocabulary.get(&kmer).map(|e| e.count).unwrap_or(0);
@@ -94,15 +99,22 @@ pub fn compute_assembly_index(vocabulary: &Vocabulary, max_k: usize) -> Assembly
                 for p in 1..k {
                     let (left, right) = kmer.split_at(p);
 
-                    if !vocabulary.contains(&left) || !vocabulary.contains(&right) {
+                    // When canonical, look up canonical forms of split halves
+                    let (left_lookup, right_lookup) = if canonical {
+                        (left.canonical(), right.canonical())
+                    } else {
+                        (left, right)
+                    };
+
+                    if !vocabulary.contains(&left_lookup) || !vocabulary.contains(&right_lookup) {
                         continue;
                     }
 
-                    let left_data = match computed_ref.get(&(left.encoded, left.len)) {
+                    let left_data = match computed_ref.get(&(left_lookup.encoded, left_lookup.len)) {
                         Some(d) => d,
                         None => continue,
                     };
-                    let right_data = match computed_ref.get(&(right.encoded, right.len)) {
+                    let right_data = match computed_ref.get(&(right_lookup.encoded, right_lookup.len)) {
                         Some(d) => d,
                         None => continue,
                     };
@@ -126,8 +138,13 @@ pub fn compute_assembly_index(vocabulary: &Vocabulary, max_k: usize) -> Assembly
                 // Rebuild the best pathway once (for storage in the DP table)
                 let split = best_split?;
                 let (left, right) = kmer.split_at(split);
-                let left_data = computed_ref.get(&(left.encoded, left.len)).unwrap();
-                let right_data = computed_ref.get(&(right.encoded, right.len)).unwrap();
+                let (left_lookup, right_lookup) = if canonical {
+                    (left.canonical(), right.canonical())
+                } else {
+                    (left, right)
+                };
+                let left_data = computed_ref.get(&(left_lookup.encoded, left_lookup.len)).unwrap();
+                let right_data = computed_ref.get(&(right_lookup.encoded, right_lookup.len)).unwrap();
 
                 pathway_set.clear();
                 for km in &left_data.2 {
@@ -199,7 +216,7 @@ mod tests {
     #[test]
     fn test_base_alphabet_ai_zero() {
         let vocab = make_test_vocabulary();
-        let result = compute_assembly_index(&vocab, 3);
+        let result = compute_assembly_index(&vocab, 3, false);
 
         let a = result.get(&KmerU64::from_slice(b"A").unwrap()).unwrap();
         assert_eq!(a.assembly_index, 0);
@@ -209,7 +226,7 @@ mod tests {
     #[test]
     fn test_dinucleotide_ai() {
         let vocab = make_test_vocabulary();
-        let result = compute_assembly_index(&vocab, 3);
+        let result = compute_assembly_index(&vocab, 3, false);
 
         let ac = result.get(&KmerU64::from_slice(b"AC").unwrap()).unwrap();
         // pathway = {A} ∪ {C} ∪ {AC} = {A, C, AC} -> AI = 3
@@ -220,7 +237,7 @@ mod tests {
     #[test]
     fn test_trinucleotide_ai() {
         let vocab = make_test_vocabulary();
-        let result = compute_assembly_index(&vocab, 3);
+        let result = compute_assembly_index(&vocab, 3, false);
 
         let acg = result.get(&KmerU64::from_slice(b"ACG").unwrap()).unwrap();
         // A+CG: {A} ∪ {C,G,CG} ∪ {ACG} = {A,C,G,CG,ACG} -> AI=5
@@ -237,7 +254,26 @@ mod tests {
         // ACG in vocab but no dinucleotides — can't split
         vocab.insert(KmerU64::from_slice(b"ACG").unwrap(), 25);
 
-        let result = compute_assembly_index(&vocab, 3);
+        let result = compute_assembly_index(&vocab, 3, false);
         assert!(result.get(&KmerU64::from_slice(b"ACG").unwrap()).is_none());
+    }
+
+    #[test]
+    fn test_canonical_assembly_index() {
+        let mut vocab = Vocabulary::new();
+        // Canonical alphabet: only A and C
+        vocab.insert(KmerU64::from_slice(b"A").unwrap(), 200);
+        vocab.insert(KmerU64::from_slice(b"C").unwrap(), 200);
+        // AC is canonical (AC < GT in encoding)
+        vocab.insert(KmerU64::from_slice(b"AC").unwrap(), 100);
+
+        let result = compute_assembly_index(&vocab, 2, true);
+
+        let a = result.get(&KmerU64::from_slice(b"A").unwrap()).unwrap();
+        assert_eq!(a.assembly_index, 0);
+
+        let ac = result.get(&KmerU64::from_slice(b"AC").unwrap()).unwrap();
+        // pathway = {A} ∪ {C} ∪ {AC} = 3
+        assert_eq!(ac.assembly_index, 3);
     }
 }

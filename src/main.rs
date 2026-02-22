@@ -3,10 +3,12 @@ use clap::{Parser, Subcommand};
 use std::path::PathBuf;
 
 mod assembly;
+mod compare;
 mod encode;
 mod fasta;
 mod graph;
 mod kmer;
+mod ncbi;
 mod output;
 
 #[derive(Parser)]
@@ -36,6 +38,14 @@ enum Commands {
         /// Output directory
         #[arg(short, long, default_value = "output")]
         output: PathBuf,
+
+        /// Use canonical (strand-aware) k-mers
+        #[arg(long)]
+        canonical: bool,
+
+        /// Z-score for composition-aware significance filtering
+        #[arg(long, default_value = "3.0")]
+        z_score: f64,
     },
 
     /// Export results to various formats
@@ -59,6 +69,52 @@ enum Commands {
         #[arg(short, long)]
         input: PathBuf,
     },
+
+    /// Compare assembly indices across multiple genomes
+    Compare {
+        /// Input FASTA files or precomputed result.bin files
+        #[arg(short, long, num_args = 2..)]
+        inputs: Vec<PathBuf>,
+
+        /// Treat inputs as precomputed result.bin files
+        #[arg(long)]
+        precomputed: bool,
+
+        /// Maximum k-mer length (default: adaptive, for fresh computation)
+        #[arg(long)]
+        max_k: Option<usize>,
+
+        /// Use canonical (strand-aware) k-mers (for fresh computation)
+        #[arg(long)]
+        canonical: bool,
+
+        /// Z-score for composition-aware significance filtering (for fresh computation)
+        #[arg(long, default_value = "3.0")]
+        z_score: f64,
+
+        /// Output directory for comparison files
+        #[arg(short, long, default_value = "comparison")]
+        output: PathBuf,
+
+        /// Number of threads (default: all available)
+        #[arg(short, long)]
+        threads: Option<usize>,
+    },
+
+    /// Fetch a genome from NCBI by accession number
+    Fetch {
+        /// NCBI accession number (e.g. GCF_000005845.2)
+        #[arg(short = 'a', long)]
+        accession: String,
+
+        /// Output FASTA file path
+        #[arg(short, long)]
+        output: PathBuf,
+
+        /// Only show assembly info, don't download
+        #[arg(long)]
+        info_only: bool,
+    },
 }
 
 fn main() -> Result<()> {
@@ -72,13 +128,29 @@ fn main() -> Result<()> {
             max_k,
             threads,
             output: output_dir,
-        } => cmd_build(input, max_k, threads, output_dir),
+            canonical,
+            z_score,
+        } => cmd_build(input, max_k, threads, output_dir, canonical, z_score),
         Commands::Export {
             input,
             format,
             output: output_path,
         } => cmd_export(input, format, output_path),
         Commands::Info { input } => cmd_info(input),
+        Commands::Compare {
+            inputs,
+            precomputed,
+            max_k,
+            canonical,
+            z_score,
+            output: output_dir,
+            threads,
+        } => cmd_compare(inputs, precomputed, max_k, canonical, z_score, output_dir, threads),
+        Commands::Fetch {
+            accession,
+            output,
+            info_only,
+        } => cmd_fetch(accession, output, info_only),
     }
 }
 
@@ -87,6 +159,8 @@ fn cmd_build(
     max_k: Option<usize>,
     threads: Option<usize>,
     output_dir: PathBuf,
+    canonical: bool,
+    z_score: f64,
 ) -> Result<()> {
     use std::time::Instant;
 
@@ -115,12 +189,12 @@ fn cmd_build(
 
     // 3. Count k-mers and build vocabulary (streams from mmap)
     tracing::info!("Counting k-mers...");
-    let vocabulary = kmer::build_vocabulary(&reader, max_k);
+    let vocabulary = kmer::build_vocabulary(&reader, max_k, canonical, z_score);
     tracing::info!("Vocabulary size: {} k-mers", vocabulary.len());
 
     // 4. Compute assembly index
     tracing::info!("Computing assembly index...");
-    let assembly_result = assembly::compute_assembly_index(&vocabulary, max_k);
+    let assembly_result = assembly::compute_assembly_index(&vocabulary, max_k, canonical);
     tracing::info!(
         "Max assembly index: {}",
         assembly_result.max_assembly_index()
@@ -161,6 +235,8 @@ fn cmd_build(
         node_count: stats.node_count,
         edge_count: stats.edge_count,
         elapsed_secs: start.elapsed().as_secs_f64(),
+        canonical,
+        z_score,
     };
 
     let json_path = output_dir.join("metadata.json");
@@ -190,6 +266,122 @@ fn cmd_export(input: PathBuf, format: output::ExportFormat, output_path: PathBuf
     }
 
     tracing::info!("Exported to {}", output_path.display());
+    Ok(())
+}
+
+fn cmd_compare(
+    inputs: Vec<PathBuf>,
+    precomputed: bool,
+    max_k_override: Option<usize>,
+    canonical: bool,
+    z_score: f64,
+    output_dir: PathBuf,
+    threads: Option<usize>,
+) -> Result<()> {
+    if let Some(t) = threads {
+        rayon::ThreadPoolBuilder::new()
+            .num_threads(t)
+            .build_global()
+            .ok();
+    }
+
+    let mut genome_stats = Vec::new();
+
+    for input in &inputs {
+        let label = input
+            .file_stem()
+            .map(|s| s.to_string_lossy().to_string())
+            .unwrap_or_else(|| input.display().to_string());
+
+        if precomputed {
+            // Load from result.bin
+            tracing::info!("Loading precomputed results: {}", input.display());
+            let (assembly_result, dag, metadata) = output::read_binary(input)?;
+            let stats = graph::dag_stats(&dag);
+            genome_stats.push(compare::compute_genome_stats(
+                &label,
+                &assembly_result,
+                &stats,
+                &metadata,
+            ));
+        } else {
+            // Run full pipeline
+            tracing::info!("Processing: {}", input.display());
+            let reader = fasta::FastaReader::from_path(input)?;
+            let genome_length = reader.genome_length();
+            let max_k = max_k_override.unwrap_or_else(|| kmer::find_max_k(genome_length));
+            let vocabulary = kmer::build_vocabulary(&reader, max_k, canonical, z_score);
+            let assembly_result =
+                assembly::compute_assembly_index(&vocabulary, max_k, canonical);
+            let dag = graph::build_dag(&assembly_result);
+            let stats = graph::dag_stats(&dag);
+
+            let metadata = output::Metadata {
+                genome_file: input.display().to_string(),
+                genome_length,
+                max_k,
+                vocab_size: vocabulary.len(),
+                max_assembly_index: assembly_result.max_assembly_index(),
+                node_count: stats.node_count,
+                edge_count: stats.edge_count,
+                elapsed_secs: 0.0,
+                canonical,
+                z_score,
+            };
+
+            genome_stats.push(compare::compute_genome_stats(
+                &label,
+                &assembly_result,
+                &stats,
+                &metadata,
+            ));
+        }
+    }
+
+    let comparison = compare::compare_genomes(genome_stats);
+
+    // Print summary table
+    compare::print_comparison_table(&comparison);
+
+    // Write output files
+    std::fs::create_dir_all(&output_dir)?;
+
+    let csv_path = output_dir.join("comparison.csv");
+    compare::write_comparison_csv(&comparison, &csv_path)?;
+    tracing::info!("Wrote comparison CSV: {}", csv_path.display());
+
+    let json_path = output_dir.join("comparison.json");
+    compare::write_comparison_json(&comparison, &json_path)?;
+    tracing::info!("Wrote comparison JSON: {}", json_path.display());
+
+    Ok(())
+}
+
+fn cmd_fetch(accession: String, output: PathBuf, info_only: bool) -> Result<()> {
+    let config = ncbi::NcbiConfig::load();
+    let mut limiter = ncbi::RateLimiter::new(config.api_key.is_some());
+
+    // Look up assembly info
+    limiter.wait();
+    let info = ncbi::lookup_assembly(&accession, &config)?;
+    println!("Assembly Information");
+    println!("====================");
+    println!("Accession:      {}", info.accession);
+    println!("Organism:       {}", info.organism);
+    println!("Assembly name:  {}", info.assembly_name);
+    println!("Assembly level: {}", info.assembly_level);
+
+    if info_only {
+        return Ok(());
+    }
+
+    // Download genome
+    println!();
+    println!("Downloading genome FASTA...");
+    limiter.wait();
+    ncbi::download_genome(&accession, &output, &config)?;
+    println!("Saved to: {}", output.display());
+
     Ok(())
 }
 
