@@ -1,56 +1,42 @@
-# Git ignore file for bioinformatics and Nextflow projects
+# Rust build artifacts
+/target/
+**/*.rs.bk
+Cargo.lock
 
-# Nextflow execution directories and files
-work/
-.nextflow/
-.nextflow.log*
-
-# Output directories
-results/
-output/
-
-# Temporary and cache files
-*.tmp
-*.swp
-*.swo
-
-# Large data files
+# Data files
 *.fa
 *.fasta
-*.bed
-*.gff
-*.gtf
-*.vcf
-*.bam
-*.sam
-*.fastq
-*.fq
+*.fna
 *.gz
 *.bz2
 *.tar
 *.zip
-
-# Database and index files
 *.db
-*.index
-*.idx
+*.bin
 
-# Log files
-*.log
-*.out
-*.err
+# Output
+/output/
+/results/
 
-# Environment and dependency directories
-env/
-venv/
+# Python
+__pycache__/
+*.pyc
 .venv/
-conda_env/
+venv/
 
-# IDE and editor files
+# Environment
+.env
+
+# IDE
 .idea/
 .vscode/
 *.code-workspace
 
-# System files
+# System
 .DS_Store
 Thumbs.db
+
+# Nextflow (legacy)
+work/
+.nextflow/
+.nextflow.log*
